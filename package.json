@@ -1,0 +1,22 @@
+{
+  "name": "backjoon-sync",
+  "version": "0.0.1",
+  "description": "백준 온라인 저지 동기화 도구",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^14.0.0",
+    "playwright": "^1.54.1",
+    "recaptcha-solver": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.14",
+    "typescript": "^5.8.3"
+  }
+}
