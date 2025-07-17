@@ -1,18 +1,23 @@
 {
-  "name": "backjoon-sync",
+  "name": "bons",
   "version": "0.0.1",
   "description": "백준 온라인 저지 동기화 도구",
   "main": "dist/index.js",
   "scripts": {
+    "postinstall": "playwright install chromium",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "node dist/index.js"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "rrrmaster",
+  "license": "MIT",
+  "keywords": [
+    "backjoon"
+  ],
   "dependencies": {
     "commander": "^14.0.0",
     "playwright": "^1.54.1",
+    "prompts": "^2.4.2",
     "recaptcha-solver": "^0.3.0"
   },
   "devDependencies": {
