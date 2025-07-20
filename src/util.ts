@@ -1,3 +1,6 @@
+export function parseTemplate(template: string, values: Record<string, string>): string {
+  return template.replace(/\[([^\]]+)\]/g, (_, key) => values[key] || '')
+}
 export function groupBy<T, K extends string | number | symbol>(arr: T[], keyFn: (item: T) => K): Map<K, T[]> {
   const map = new Map<K, T[]>()
   for (const item of arr) {

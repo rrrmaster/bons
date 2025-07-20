@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
+    "lib": [
+      "ESNext",
+    ],
+    "rootDir": "src",
+    "target": "es2017",
+    "module": "esnext",
     "moduleResolution": "node",
     "strict": false,
     "esModuleInterop": true,
@@ -9,9 +13,14 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false,
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

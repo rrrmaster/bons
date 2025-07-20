@@ -1,17 +1,22 @@
+#!/usr/bin/env node
 import { program } from 'commander'
-import packageJson from '../package.json'
+import packageJson from '../package.json' with { type: 'json' }
+import chalk from 'chalk';
 import prompts from 'prompts'
-
 import { run } from './backjoon.js'
 
-export const mainFunction = main
 
 async function main() {
+  console.log(chalk.hex('#00537f').bold(`██████   ██████  ███    ██ ███████`))
+  console.log(chalk.hex('#00537f').bold(`██   ██ ██    ██ ████   ██ ██     `))
+  console.log(chalk.hex('#00537f').bold(`██████  ██    ██ ██ ██  ██ ███████`))
+  console.log(chalk.hex('#00537f').bold(`██   ██ ██    ██ ██  ██ ██      ██`))
+  console.log(chalk.hex('#00537f').bold(`██████   ██████  ██   ████ ███████`))
   program
     .name(packageJson.name)
     .description(packageJson.description)
     .version(packageJson.version)
-    .option('-u, --username <string>', 'backjoon username')
+    .requiredOption('-u, --username <string>', 'backjoon username')
     .option('--password-stdin', 'backjoon password')
     .option('-o, --output <string>', 'backjoon output folorder', './backjoon/[problem_id]/[submission_id].[ext]')
     .option('-s, --status [letters...]', 'as', 'AC')
@@ -29,6 +34,10 @@ async function main() {
       name: 'value',
       message: 'Enter your password:',
     })
+    if(password ===null)
+    {
+      return 1;
+    }
   }
 
   const { username, output, status, scope } = options

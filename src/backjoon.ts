@@ -1,12 +1,11 @@
 import { chromium, devices, Page } from 'playwright'
 import { solve, exists } from 'recaptcha-solver'
+import cliProgress from 'cli-progress'
 import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
-import { getSubmission, getSubmissionExtension, scopeSubmissionList } from './submission.js'
-import path from 'path'
+import { getSubmission, getSubmissionExtension, getSubmissionList, scopeSubmissionList } from './submission.js'
 
-function parseTemplate(template: string, values: Record<string, string>): string {
-  return template.replace(/\[([^\]]+)\]/g, (_, key) => values[key] || '')
-}
+import path from 'path'
+import { parseTemplate } from './util.js'
 
 export const run = async (
   username: string,
@@ -18,18 +17,13 @@ export const run = async (
   }
 ) => {
   const { output, status, scope } = option
-  const browser = await chromium.launch({
-    headless: false,
-    channel: 'chromium',
-  })
+  const browser = await chromium.launch({ headless: false, channel: 'chromium' })
   const context = await browser.newContext(devices['Desktop Chrome'])
   const page = await context.newPage()
   console.log('Desktop Chrome browser open')
   console.log('website login page load')
 
-  await page.goto('https://www.acmicpc.net/login?next=%2F', {
-    waitUntil: 'load',
-  })
+  await page.goto('https://www.acmicpc.net/login?next=%2F', { waitUntil: 'load' })
 
   await page.locator('input[name="login_user_id"]').pressSequentially(username, { delay: 20 })
   await page.locator('input[name="login_password"]').pressSequentially(password, { delay: 20 })
@@ -57,13 +51,11 @@ export const run = async (
   console.log(` submission filted : ${submissions.length} -> ${filterSubmissions.length}`)
   const scopingSub = scopeSubmissionList(filterSubmissions, scope)
   console.log(` submission scoping : ${filterSubmissions.length} -> ${scopingSub.length}`)
+  const b1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+  b1.start(scopingSub.length, 0, { speed: 'N/A' })
 
-  for (let i = 0; i < scopingSub.length; i++) {
-    const submission = scopingSub[i]
-    await page.goto(`https://www.acmicpc.net/source/${submission.id}`)
-    const submissionDetail = await getSubmission(page)
-    console.log(`submission success : ${submission.id} [${i + 1}/${scopingSub.length}]`)
-
+  for (const submission of scopingSub) {
+    const submissionDetail = await getSubmission(submission.id, page)
     const ext = getSubmissionExtension(submissionDetail.languageID)
     const outputPath = parseTemplate(output, {
       username: username,
@@ -73,7 +65,6 @@ export const run = async (
     })
 
     const basePath = path.dirname(outputPath)
-    console.log(basePath)
     if (!existsSync(basePath)) {
       mkdirSync(basePath, { recursive: true })
     }
@@ -81,48 +72,11 @@ export const run = async (
     writeFileSync(outputPath, submissionDetail.code)
 
     await page.waitForTimeout(1000.0)
+    b1.increment()
   }
+  b1.stop()
+
   await context.close()
   await browser.close()
-}
-
-const getSubmissionList = async (page: Page): Promise<Submission[]> => {
-  const submissions: Submission[] = []
-  while (true) {
-    const submissionElements = await page.locator("table[id='status-table'] tbody tr").all()
-    for (const element of submissionElements) {
-      const submissionID = await element.locator('td:nth-child(1)').textContent()
-      const problemId = await element.locator('td:nth-child(3)').textContent()
-      const status = await element.locator("td:nth-child(4) span[class*='result-text']").getAttribute('data-color')
-      if (isNaN(Number(submissionID))) {
-        console.warn('submission id is not number')
-        continue
-      }
-      if (isNaN(Number(problemId))) {
-        console.warn('problem id is not number')
-        continue
-      }
-      if (!['AC', 'WA', 'PE', 'TLE', 'MLE', 'OLE', 'RTE', 'CE'].includes(status.toUpperCase())) {
-        continue
-      }
-      submissions.push({
-        id: Number(submissionID),
-        status: status.toUpperCase() as SubmissionStatus,
-        problemId: Number(problemId),
-      })
-    }
-
-    console.log(`submission element count : ${submissions.length}`)
-
-    const isNextVisible = await page.locator("a[id='next_page']").isVisible()
-    if (!isNextVisible) {
-      break
-    }
-
-    page.waitForTimeout(1000.0)
-    const href = await page.locator("a[id='next_page']").getAttribute('href')
-    await page.locator("a[id='next_page']").click()
-    await page.waitForURL('https://www.acmicpc.net' + href)
-  }
-  return submissions
+  console.log('backjoon sync success')
 }

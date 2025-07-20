@@ -1,13 +1,15 @@
 {
   "name": "bons",
   "version": "0.0.1",
-  "description": "백준 온라인 저지 동기화 도구",
-  "main": "dist/index.js",
+  "description": "Backjoon web site my code download tool",
+  "main": "./dist/index.js",
+  "bin": {
+    "bons": "./dist/index.js"
+  },
   "scripts": {
-    "postinstall": "playwright install chromium",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "run": "npm run build && node ./dist/index.js"
   },
   "author": "rrrmaster",
   "license": "MIT",
@@ -15,6 +17,8 @@
     "backjoon"
   ],
   "dependencies": {
+    "chalk": "^5.4.1",
+    "cli-progress": "^3.12.0",
     "commander": "^14.0.0",
     "playwright": "^1.54.1",
     "prompts": "^2.4.2",
@@ -22,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.14",
+    "@types/prompts": "^2.4.9",
     "typescript": "^5.8.3"
   }
 }
