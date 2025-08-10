@@ -22,25 +22,38 @@ export const scopeSubmissionList = (submission: Submission[], scope: Scope): Sub
 
 export async function getSubmission(submissionId: number, page: Page): Promise<SubmissionDetail> {
   await page.goto(`https://www.acmicpc.net/source/${submissionId}`)
-
-  const id = await page.locator("div[class*='content'] table tbody tr td:nth-child(1)").textContent()
-
-  const problemId = await page.locator("div[class*='content'] table tbody tr td:nth-child(3)").textContent()
-
-  const problemTitle = await page.locator("div[class*='content'] table tbody tr td:nth-child(4)").textContent()
+  const id = await page
+    .locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=1]")
+    .textContent()
+  const problemId = await page
+    .locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=3]")
+    .textContent()
+  const problemTitle = await page
+    .locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=4]")
+    .textContent()
 
   const memoryUsaged = parseInt(
-    await page.locator("div[class*='content'] table tbody tr td:nth-child(6)").textContent()
+    await page
+      .locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=6]")
+      .textContent()
   )
 
   const cpuTimeUsaged = parseInt(
-    await page.locator("div[class*='content'] table tbody tr td:nth-child(7)").textContent()
+    await page
+      .locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=7]")
+      .textContent()
   )
 
-  const displayLanguageName = await page.locator("div[class*='content'] table tbody tr td:nth-child(8)").textContent()
+  const displayLanguageName = await page
+    .locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=8]")
+    .textContent()
   const languageID = parseInt((await page.locator('input[id="language"]').getAttribute('value')) ?? '')
 
-  const codeLength = Number(await page.locator("div[class*='content'] table tbody tr td:nth-child(9)").textContent())
+  const codeLength = Number(
+    await page
+      .locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=9]")
+      .textContent()
+  )
 
   const code = await page.locator('textarea[name="source"]').textContent()
   return {

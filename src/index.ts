@@ -1,17 +1,11 @@
-#!/usr/bin/env node
-import { program } from 'commander'
-import packageJson from '../package.json' with { type: 'json' }
-import chalk from 'chalk';
+import chalk from 'chalk'
 import prompts from 'prompts'
+import { program } from 'commander'
 import { run } from './backjoon.js'
+import { createRequire } from 'module'
+const packageJson = createRequire(import.meta.url)('../package.json')
 
-
-async function main() {
-  console.log(chalk.hex('#00537f').bold(`██████   ██████  ███    ██ ███████`))
-  console.log(chalk.hex('#00537f').bold(`██   ██ ██    ██ ████   ██ ██     `))
-  console.log(chalk.hex('#00537f').bold(`██████  ██    ██ ██ ██  ██ ███████`))
-  console.log(chalk.hex('#00537f').bold(`██   ██ ██    ██ ██  ██ ██      ██`))
-  console.log(chalk.hex('#00537f').bold(`██████   ██████  ██   ████ ███████`))
+export async function main() {
   program
     .name(packageJson.name)
     .description(packageJson.description)
@@ -34,9 +28,8 @@ async function main() {
       name: 'value',
       message: 'Enter your password:',
     })
-    if(password ===null)
-    {
-      return 1;
+    if (password === null) {
+      return 1
     }
   }
 
