@@ -1,6 +1,6 @@
 {
   "name": "bons",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Backjoon web site my code download tool",
   "main": "dist/index.js",
   "type": "module",
