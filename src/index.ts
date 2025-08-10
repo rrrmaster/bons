@@ -40,5 +40,3 @@ export async function main() {
     scope,
   })
 }
-
-main()
