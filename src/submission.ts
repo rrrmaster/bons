@@ -94,8 +94,6 @@ export const getSubmissionList = async (page: Page): Promise<Submission[]> => {
       })
     }
 
-    console.log(`submission element count : ${submissions.length}`)
-
     const isNextVisible = await page.locator("a[id='next_page']").isVisible()
     if (!isNextVisible) {
       break
@@ -106,6 +104,7 @@ export const getSubmissionList = async (page: Page): Promise<Submission[]> => {
     await page.locator("a[id='next_page']").click()
     await page.waitForURL('https://www.acmicpc.net' + href)
   }
+  console.log(`total submission element count : ${submissions.length}`)
   return submissions
 }
 /*
