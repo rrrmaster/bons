@@ -30,7 +30,15 @@ export const run = async (
 
   await page.waitForTimeout(2500.0)
   await page.locator('button[id="submit_button"]').click()
-  if (await exists(page)) await solve(page)
+  await page.waitForTimeout(2500.0)
+
+  if ((await page.locator('form p[class="color-red"]').count()) > 0) {
+    console.error('username or password invalid')
+    return
+  }
+  if ((await page.locator("iframe[src*='recaptcha']").count()) > 0) {
+    await solve(page)
+  }
   await page.waitForTimeout(2500.0)
   await page.waitForURL('https://www.acmicpc.net/')
 
