@@ -17,7 +17,7 @@ export const run = async (
   }
 ) => {
   const { output, status, scope } = option
-  const browser = await chromium.launch({ headless: false, channel: 'chromium' })
+  const browser = await chromium.launch({ headless: true, channel: 'chromium' })
   const context = await browser.newContext(devices['Desktop Chrome'])
   try {
     const page = await context.newPage()
