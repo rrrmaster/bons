@@ -1,13 +1,17 @@
 {
   "name": "bons",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Backjoon web site my code download tool",
-  "main": "./dist/index.js",
+  "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "bons": "./bin/bons"
+    "bons": "./bin/bons.js"
   },
+  "files": ["/bin",
+"/dist"
+  ],
   "scripts": {
+    "start": "node bin/bons",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "dev": "npm run build && node ./dist/index.js"
