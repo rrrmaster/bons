@@ -1,14 +1,15 @@
 {
   "name": "bons",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Backjoon web site my code download tool",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
     "bons": "./bin/bons.js"
   },
-  "files": ["/bin",
-"/dist"
+  "files": [
+    "/bin",
+    "/dist"
   ],
   "scripts": {
     "start": "node bin/bons",
