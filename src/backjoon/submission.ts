@@ -1,7 +1,7 @@
 import { Page } from 'playwright'
-import { groupBy } from '../util.js'
 import { solve } from 'recaptcha-solver'
 import chalk from 'chalk'
+import { Element, parseHtml } from 'libxmljs2'
 
 export async function login(page: Page, username: string, password: string) {
   try {
@@ -36,67 +36,47 @@ export async function login(page: Page, username: string, password: string) {
   }
 }
 
-export const scopeSubmissionList = (submission: Submission[], scope: Scope): Submission[] => {
-  if (scope == 'all') return submission
-  else if (scope == 'first') {
-    const temp: Submission[] = []
-    const result = groupBy(submission, (s: Submission) => s.problemId)
-    for (const key of result.keys()) {
-      temp.push(result.get(key).sort((a, b) => a.id - b.id)[0])
-    }
-    return temp
-  } else if (scope == 'last') {
-    const temp: Submission[] = []
-    const result = groupBy(submission, (s: Submission) => s.problemId)
-    for (const key of result.keys()) {
-      temp.push(result.get(key).sort((a, b) => b.id - a.id)[0])
-    }
-    return temp
-  }
+export async function getSubmissionById(submissionId: number, page: Page): Promise<SubmissionDetail> {
+  const response = await page.request.get(`https://www.acmicpc.net/source/${submissionId}`)
+  const body = await response.body()
+  const doc = parseHtml(body.toString('utf-8'))
+
+  const id = doc.find<Element>("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=1]")[0].text()
+  const problemId = doc.find<Element>("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=3]")[0].text()
+  const problemTitle = doc.find<Element>("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=4]")[0].text()
+
+  const memoryUsaged = parseInt(doc.find<Element>("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=6]")[0].text())
+
+  const cpuTimeUsaged = parseInt(doc.find<Element>("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=7]")[0].text())
+
+  const displayLanguageName = doc.find<Element>("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=8]")[0].text()
+  const languageID = parseInt(doc.find<Element>('//input[@id="language"]')[0].attr('value')!!.value() ?? '')
+
+  const codeLength = Number(doc.find<Element>("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=9]")[0].text())
+
+  const code = doc.find<Element>('//textarea[@name="source"]')[0].text()
+  const ext = getSubmissionExtension(languageID)
+
+  return { id, code, problemId, problemTitle, cpuTimeUsaged, memoryUsaged, languageID, codeLength, displayLanguageName, ext }
 }
 
-export async function getSubmission(submissionId: number, page: Page): Promise<SubmissionDetail> {
-  await page.goto(`https://www.acmicpc.net/source/${submissionId}`)
-  const id = await page.locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=1]").textContent()
-  const problemId = await page.locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=3]").textContent()
-  const problemTitle = await page.locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=4]").textContent()
-
-  const memoryUsaged = parseInt(await page.locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=6]").textContent())
-
-  const cpuTimeUsaged = parseInt(await page.locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=7]").textContent())
-
-  const displayLanguageName = await page.locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=8]").textContent()
-  const languageID = parseInt((await page.locator('input[id="language"]').getAttribute('value')) ?? '')
-
-  const codeLength = Number(await page.locator("//table[.//th[contains(normalize-space(), '제출 번호')]]/tbody/tr/td[position()=9]").textContent())
-
-  const code = await page.locator('textarea[name="source"]').textContent()
-  return {
-    id,
-    code,
-    problemId,
-    problemTitle,
-    cpuTimeUsaged,
-    memoryUsaged,
-    languageID,
-    codeLength,
-    displayLanguageName,
-  }
-}
-
-export const getSubmissionList = async (page: Page): Promise<Submission[]> => {
+export const getSubmissionList = async (username: string, page: Page): Promise<Submission[]> => {
   const submissions: Submission[] = []
   let pageNumber = 1 // 페이지 번호를 추적하기 위한 변수
-
+  let baseUrl = `/status?from_mine=1&user_id=${username}`
   while (true) {
+    const response = await page.request.get(`https://www.acmicpc.net${baseUrl}`)
+    const body = (await response.body()).toString()
+    const doc = parseHtml(body)
     // console.log(`➡️ 현재 ${pageNumber}번째 페이지의 제출 목록을 가져오는 중...`)
 
-    const submissionElements = await page.locator("table[id='status-table'] tbody tr").all()
+    const submissionElements = doc.find<Element>("//table[@id='status-table']//tbody//tr")
+    const validStatuses: SubmissionStatus[] = ['AC', 'WA', 'PE', 'TLE', 'MLE', 'OLE', 'RTE', 'CE']
 
     for (const element of submissionElements) {
-      const submissionIDText = await element.locator('td:nth-child(1)').textContent()
-      const problemIdText = await element.locator('td:nth-child(3)').textContent()
-      const status = await element.locator("td:nth-child(4) span[class*='result-text']").getAttribute('data-color')
+      const submissionIDText = element.find<Element>('.//td[position()=1]')[0].text()
+      const problemIdText = element.find<Element>('.//td[position()=3]')[0].text()
+      const status = element.find<Element>('.//td[position()=4]//span')[0].attr('data-color').value()
 
       const submissionID = Number(submissionIDText)
       const problemId = Number(problemIdText)
@@ -111,33 +91,22 @@ export const getSubmissionList = async (page: Page): Promise<Submission[]> => {
       }
 
       const upperCaseStatus = status?.toUpperCase() as SubmissionStatus
-      const validStatuses: SubmissionStatus[] = ['AC', 'WA', 'PE', 'TLE', 'MLE', 'OLE', 'RTE', 'CE']
       if (!validStatuses.includes(upperCaseStatus)) {
         // console.log(`ℹ️ 상태가 유효하지 않아 (${status}) 건너뜁니다.`)
         continue
       }
-
-      submissions.push({
-        id: submissionID,
-        status: upperCaseStatus,
-        problemId: problemId,
-      })
+      submissions.push({ id: submissionID, status: upperCaseStatus, problemId: problemId })
     }
 
-    const nextButton = page.locator("a[id='next_page']")
-    const isNextVisible = await nextButton.isVisible()
+    const nextButton = doc.find<Element>("//a[@id='next_page']")
 
-    if (!isNextVisible) {
+    if (nextButton.length == 0) {
       console.log(chalk.blueBright.bold(`Pagination Finish!`))
-
       break
     }
-
+    baseUrl = nextButton[0].attr(`href`).value()
     pageNumber++
     console.log(chalk.blueBright.bold(`Move Next Page ${pageNumber - 1} -> ${pageNumber} (Submission Count : ${submissionElements.length})`))
-    await nextButton.click()
-
-    await page.waitForLoadState('networkidle')
   }
   return submissions
 }
@@ -145,7 +114,7 @@ export const getSubmissionList = async (page: Page): Promise<Submission[]> => {
 /*
  * https://help.acmicpc.net/language/info 참고
  */
-export const getSubmissionExtension = (languageID: number): string => {
+const getSubmissionExtension = (languageID: number): string => {
   switch (languageID) {
     case 0: // 0 -> C99
       return 'c'

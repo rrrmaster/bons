@@ -9,6 +9,7 @@ interface SubmissionDetail {
   cpuTimeUsaged: number
   memoryUsaged: number
   codeLength: number
+  ext: string
   languageID: number
   displayLanguageName: string | null
 }

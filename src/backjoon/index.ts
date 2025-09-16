@@ -1,61 +1,80 @@
-import { chromium, devices } from 'playwright'
-import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
-import { getSubmission, getSubmissionExtension, getSubmissionList, login, scopeSubmissionList } from './submission.js'
+import { chromium, devices, Page } from 'playwright'
+import { existsSync } from 'node:fs'
+import { getSubmissionById, getSubmissionList, login } from './submission.js'
 import path from 'path'
-import { parseTemplate } from '../util.js'
+import { groupBy, parseTemplate } from '../util.js'
 import chalk from 'chalk'
+import pLimit from 'p-limit'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { logger } from '../config/config.js'
 
+const scopeSubmissionList = (submission: Submission[], scope: Scope): Submission[] => {
+  if (scope == 'all') return submission
+  else if (scope == 'first') {
+    const temp: Submission[] = []
+    const result = groupBy(submission, (s: Submission) => s.problemId)
+    for (const key of result.keys()) {
+      temp.push(result.get(key).sort((a, b) => a.id - b.id)[0])
+    }
+    return temp
+  } else if (scope == 'last') {
+    const temp: Submission[] = []
+    const result = groupBy(submission, (s: Submission) => s.problemId)
+    for (const key of result.keys()) {
+      temp.push(result.get(key).sort((a, b) => b.id - a.id)[0])
+    }
+    return temp
+  }
+}
+const downloadSubmission = async (username: string, output: string, page: Page, submission: Submission) => {
+  const submissionDetail = await getSubmissionById(submission.id, page)
+  const outputPath = parseTemplate(output, { username: username, ext: submissionDetail.ext, problem_id: submission.problemId.toString(), submission_id: submission.id.toString() })
+  const basePath = path.dirname(outputPath)
+  if (!existsSync(basePath)) {
+    await mkdir(basePath, { recursive: true })
+    logger.debug(chalk.gray(`Created directory: ${basePath}`))
+  }
+
+  await writeFile(outputPath, submissionDetail.code)
+  logger.info(chalk.green(`Saved submission ${submission.id} (${submission.problemId}) as ${submissionDetail.ext}`))
+  await new Promise((r) => setTimeout(r, 200))
+}
 export const run = async (username: string, password: string, option: { output: string; status: SubmissionStatus[]; scope: 'first' | 'last' | 'all' }) => {
   const { output, status, scope } = option
-  const browser = await chromium.launch({ headless: true, channel: 'chromium' })
+  const browser = await chromium.launch({ headless: false, channel: 'chromium' })
   const context = await browser.newContext(devices['Desktop Chrome'])
   try {
     const page = await context.newPage()
-    console.log(chalk.cyan.bold('🚀 Desktop Chrome browser open'))
+    logger.info(chalk.cyan.bold('🚀 Desktop Chrome browser open'))
 
     await login(page, username, password)
 
-    await page.goto(`https://www.acmicpc.net/status?from_mine=1&user_id=${username}`)
-
-    console.log(chalk.yellow.bold('\n[1] Submission list load start...'))
-    const submissions = await getSubmissionList(page)
-    console.log(chalk.green(`✔ Total submissions: ${submissions.length}`))
+    logger.info(chalk.yellow.bold('\n[1] Submission list load start...'))
+    const submissions = await getSubmissionList(username, page)
+    logger.info(chalk.green(`✔ Total submissions: ${submissions.length}`))
     if (submissions.length == 0) {
-      console.log(chalk.yellow(`Submissions Empty`))
+      logger.info(`Submissions Empty`)
       return
     }
     const filterSubmissions = submissions.filter((e) => status.includes(e.status))
-    console.log(chalk.yellow.bold(`\n[2] Filter submissions by status:`) + ` ${chalk.dim(submissions.length)} -> ${chalk.bold(filterSubmissions.length)}`)
+    logger.info(chalk.yellow.bold(`\n[2] Filter submissions by status:`) + ` ${chalk.dim(submissions.length)} -> ${chalk.bold(filterSubmissions.length)}`)
     const scopingSub = scopeSubmissionList(filterSubmissions, scope)
-    console.log(chalk.yellow.bold(`[3] Scope submissions (${scope}):`) + ` ${chalk.dim(filterSubmissions.length)} -> ${chalk.bold(scopingSub.length)}`)
+    logger.info(chalk.yellow.bold(`[3] Scope submissions (${scope}):`) + ` ${chalk.dim(filterSubmissions.length)} -> ${chalk.bold(scopingSub.length)}`)
     if (scopingSub.length == 0) {
-      console.log(chalk.yellow(`Submissions Empty`))
+      logger.info(`Submissions Empty`)
       return
     }
-    for (const submission of scopingSub) {
-      const submissionDetail = await getSubmission(submission.id, page)
-      const ext = getSubmissionExtension(submissionDetail.languageID)
-      const outputPath = parseTemplate(output, {
-        username: username,
-        ext: ext,
-        problem_id: submission.problemId.toString(),
-        submission_id: submission.id.toString(),
-      })
+    const limit = pLimit(2)
+    const tasks = scopingSub.map((sub) => limit(() => downloadSubmission(username, output, page, sub)))
+    const results = await Promise.allSettled(tasks)
 
-      const basePath = path.dirname(outputPath)
-      if (!existsSync(basePath)) {
-        mkdirSync(basePath, { recursive: true })
-        console.log(chalk.gray(`Created directory: ${basePath}`))
-      }
+    const success = results.filter((r) => r.status === 'fulfilled').length
+    const failed = results.filter((r) => r.status === 'rejected').length
 
-      writeFileSync(outputPath, submissionDetail.code)
-      console.log(chalk.green(`Saved submission ${submission.id} (${submission.problemId}) as ${ext}`))
-
-      await page.waitForTimeout(1000.0)
-    }
+    logger.info(`✅ ${success} downloads, ❌ ${failed} failed`)
   } finally {
     await context.close()
     await browser.close()
   }
-  console.log(chalk.green.bold('\nBackjoon sync success! All submissions saved.'))
+  logger.info('Backjoon sync success! All submissions saved.')
 }
