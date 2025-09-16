@@ -2,10 +2,11 @@ import { Page } from 'playwright'
 import { solve } from 'recaptcha-solver'
 import chalk from 'chalk'
 import { Element, parseHtml } from 'libxmljs2'
+import { logger } from '../config/config'
 
 export async function login(page: Page, username: string, password: string) {
   try {
-    console.log('website login page load')
+    logger.info('website login page load')
 
     await page.goto('https://www.acmicpc.net/login?next=%2F', { waitUntil: 'load' })
 
@@ -27,7 +28,7 @@ export async function login(page: Page, username: string, password: string) {
 
     await page.waitForURL('https://www.acmicpc.net/', { timeout: 5000 })
 
-    console.log('login success')
+    logger.info('login success')
   } catch (err) {
     if (err.name === 'TimeoutError') {
       throw new Error('Network timeout during login')
@@ -68,7 +69,7 @@ export const getSubmissionList = async (username: string, page: Page): Promise<S
     const response = await page.request.get(`https://www.acmicpc.net${baseUrl}`)
     const body = (await response.body()).toString()
     const doc = parseHtml(body)
-    // console.log(`➡️ 현재 ${pageNumber}번째 페이지의 제출 목록을 가져오는 중...`)
+    // logger.info(`➡️ 현재 ${pageNumber}번째 페이지의 제출 목록을 가져오는 중...`)
 
     const submissionElements = doc.find<Element>("//table[@id='status-table']//tbody//tr")
     const validStatuses: SubmissionStatus[] = ['AC', 'WA', 'PE', 'TLE', 'MLE', 'OLE', 'RTE', 'CE']
@@ -92,7 +93,7 @@ export const getSubmissionList = async (username: string, page: Page): Promise<S
 
       const upperCaseStatus = status?.toUpperCase() as SubmissionStatus
       if (!validStatuses.includes(upperCaseStatus)) {
-        // console.log(`ℹ️ 상태가 유효하지 않아 (${status}) 건너뜁니다.`)
+        // logger.info(`ℹ️ 상태가 유효하지 않아 (${status}) 건너뜁니다.`)
         continue
       }
       submissions.push({ id: submissionID, status: upperCaseStatus, problemId: problemId })
@@ -101,12 +102,12 @@ export const getSubmissionList = async (username: string, page: Page): Promise<S
     const nextButton = doc.find<Element>("//a[@id='next_page']")
 
     if (nextButton.length == 0) {
-      console.log(chalk.blueBright.bold(`Pagination Finish!`))
+      logger.info(chalk.blueBright.bold(`Pagination Finish!`))
       break
     }
     baseUrl = nextButton[0].attr(`href`).value()
     pageNumber++
-    console.log(chalk.blueBright.bold(`Move Next Page ${pageNumber - 1} -> ${pageNumber} (Submission Count : ${submissionElements.length})`))
+    logger.info(chalk.blueBright.bold(`Move Next Page ${pageNumber - 1} -> ${pageNumber} (Submission Count : ${submissionElements.length})`))
   }
   return submissions
 }
