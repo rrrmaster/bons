@@ -14,10 +14,11 @@ export async function main() {
     .option('-o, --output <string>', 'Backjoon output folder', './backjoon/[problem_id]/[submission_id].[ext]')
     .option('-s, --status [letters...]', 'Filter by status', 'AC')
     .option('--scope <string>', 'Scope of results', 'last')
+    .option('--worker <number>', 'Worker', '5')
+
     .parse()
 
   const options = program.opts()
-
   const password = await getPassword(options)
 
   // 3. 실행
@@ -25,6 +26,7 @@ export async function main() {
     output: options.output,
     status: options.status,
     scope: options.scope,
+    worker: Number(options.worker || 5),
   })
 }
 

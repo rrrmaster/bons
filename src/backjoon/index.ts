@@ -1,4 +1,4 @@
-import { chromium, devices, Page } from 'playwright'
+import { chromium, Page } from 'playwright'
 import { existsSync } from 'node:fs'
 import { getSubmissionById, getSubmissionList, login } from './submission.js'
 import path from 'path'
@@ -6,7 +6,8 @@ import { groupBy, parseTemplate } from '../util.js'
 import chalk from 'chalk'
 import pLimit from 'p-limit'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { logger } from '../config/config.js'
+import { logger } from '../config/logger.js'
+import cliProgress from 'cli-progress'
 
 const scopeSubmissionList = (submission: Submission[], scope: Scope): Submission[] => {
   if (scope == 'all') return submission
@@ -32,17 +33,18 @@ const downloadSubmission = async (username: string, output: string, page: Page, 
   const basePath = path.dirname(outputPath)
   if (!existsSync(basePath)) {
     await mkdir(basePath, { recursive: true })
-    logger.debug(chalk.gray(`Created directory: ${basePath}`))
+    // logger.debug(chalk.gray(`Created directory: ${basePath}`))
   }
 
   await writeFile(outputPath, submissionDetail.code)
-  logger.info(chalk.green(`Saved submission ${submission.id} (${submission.problemId}) as ${submissionDetail.ext}`))
+  // logger.info(chalk.green(`Saved submission ${submission.id} (${submission.problemId}) as ${submissionDetail.ext}`))
   await new Promise((r) => setTimeout(r, 200))
 }
-export const run = async (username: string, password: string, option: { output: string; status: SubmissionStatus[]; scope: 'first' | 'last' | 'all' }) => {
-  const { output, status, scope } = option
-  const browser = await chromium.launch({ headless: false, channel: 'chromium' })
-  const context = await browser.newContext(devices['Desktop Chrome'])
+
+export const run = async (username: string, password: string, options: { worker: number; output: string; status: SubmissionStatus[]; scope: 'first' | 'last' | 'all' }) => {
+  const { output, status, scope } = options
+  const browser = await chromium.launch({ headless: false, channel: 'chromium', args: ['--disable-gpu'] })
+  const context = await browser.newContext()
   try {
     const page = await context.newPage()
     logger.info(chalk.cyan.bold('🚀 Desktop Chrome browser open'))
@@ -64,8 +66,22 @@ export const run = async (username: string, password: string, option: { output: 
       logger.info(`Submissions Empty`)
       return
     }
-    const limit = pLimit(2)
-    const tasks = scopingSub.map((sub) => limit(() => downloadSubmission(username, output, page, sub)))
+    const bar = new cliProgress.SingleBar(
+      {
+        format: `${chalk.green('{bar}')} | {value}/{total} | {filename}`,
+      },
+      cliProgress.Presets.shades_classic
+    )
+
+    bar.start(scopingSub.length, 0, { filename: '' })
+    const concurrency = options.worker || 5
+    const limit = pLimit(concurrency)
+    const tasks = scopingSub.map((sub) =>
+      limit(async () => {
+        await downloadSubmission(username, output, page, sub)
+        bar.increment({ filename: sub.id.toString() })
+      })
+    )
     const results = await Promise.allSettled(tasks)
 
     const success = results.filter((r) => r.status === 'fulfilled').length

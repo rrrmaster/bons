@@ -2,7 +2,7 @@ import { Page } from 'playwright'
 import { solve } from 'recaptcha-solver'
 import chalk from 'chalk'
 import { Element, parseHtml } from 'libxmljs2'
-import { logger } from '../config/config'
+import { logger } from '../config/logger.js'
 
 export async function login(page: Page, username: string, password: string) {
   try {
